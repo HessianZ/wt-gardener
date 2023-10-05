@@ -16,6 +16,8 @@
 #define I2C_SCL GPIO_NUM_5
 #define I2C_SDA GPIO_NUM_4
 
+#define ADC_SAMPLES 10
+
 static const char *TAG = "app_gardener";
 
 
@@ -41,7 +43,7 @@ void app_gardener_report(void)
             .mode = GPIO_MODE_OUTPUT,
             .pin_bit_mask = (1ULL << GPIO_NUM_14),
             .pull_down_en = 0,
-            .pull_up_en = 1,
+            .pull_up_en = 0,
     };
     gpio_config(&io_conf);
     gpio_set_level(GPIO_NUM_14, 1);
@@ -76,12 +78,13 @@ void app_gardener_report(void)
 
         bh1750_free:
         bh1750_free_desc(&dev);
+
+        vTaskDelay(30 / portTICK_PERIOD_MS);
     } else {
         ESP_LOGE(TAG, "bh1750_init_desc failed");
     }
 
     ESP_LOGI(TAG, "light: %d", reportData.light);
-
 
     // Read temps and humidity
     aht_t aht_dev;
@@ -98,6 +101,8 @@ void app_gardener_report(void)
 
         aht_free:
         aht_free_desc(&aht_dev);
+
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     } else {
         ESP_LOGE(TAG, "aht_init_desc failed");
     }
@@ -111,11 +116,18 @@ void app_gardener_report(void)
             .clk_div = 8,
     };
 
+
     ret = adc_init(&adc_config);
     if (ret == ESP_OK) {
-        vTaskDelay(30 / portTICK_PERIOD_MS);
-        ret = adc_read(&reportData.earthHumidity);
+        uint16_t adc_data[10];
+        ret = adc_read_fast(adc_data, ADC_SAMPLES);
         ESP_GOTO_ON_ERROR(ret, adc_free, TAG, "earthHumidity adc read failed");
+
+        uint32_t sum = 0;
+        for (int i = 0; i < ADC_SAMPLES; i++) {
+            sum += adc_data[i];
+        }
+        reportData.earthHumidity = sum / ADC_SAMPLES;
 
         adc_free:
         adc_deinit();
