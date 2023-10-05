@@ -1,0 +1,1 @@
+为了兼容esp-idf-lib的，有些组件会require dirver组件，但是8266 rtos sdk的driver是在8266下面。
