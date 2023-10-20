@@ -20,6 +20,30 @@ config ESPNOW_CHANNEL
     help
         The channel on which sending and receiving ESPNOW data.
 
+config GARDENER_SLEEP_DURATION
+    int "Sleep duration"
+    default 300
+    help
+        The duration in seconds for which the device will sleep between measurements.
+
+config GARDENER_TEMPERATURE_ENABLED
+    bool "Temperature sensor"
+    default y
+    help
+        Enable Temperature sensor(AHT10)
+
+config GARDENER_ILLUMINATE_ENABLED
+    bool "Illuminate sensor"
+    default y
+    help
+        Enable illuminate sensor(BH1750)
+
+config GARDENER_EARTHHUMI_ENABLED
+    bool "Earth humidity sensor"
+    default y
+    help
+        Enable Earth humidity sensor(ADC based)
+
 
 endmenu
 

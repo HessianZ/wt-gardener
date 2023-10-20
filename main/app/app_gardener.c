@@ -43,22 +43,24 @@ void app_gardener_report(void)
             .mode = GPIO_MODE_OUTPUT,
             .pin_bit_mask = (1ULL << GPIO_NUM_14),
             .pull_down_en = 0,
-            .pull_up_en = 0,
+            .pull_up_en = 1,
     };
     gpio_config(&io_conf);
     gpio_set_level(GPIO_NUM_14, 1);
+
+    // 给点时间让传感器上电
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 
     wt_homegw_report_data_t reportData = {0};
     reportData.header.type = 0;
     reportData.header.version = 1;
     reportData.battery = 100;
 
-//    i2c_master_init();
-
     esp_err_t ret = ESP_OK;
     i2c_dev_t dev;
     i2cdev_init();
 
+#if CONFIG_GARDENER_ILLUMINATE_ENABLED
     // read bh1750 light sensor
     ret = bh1750_init_desc(&dev, BH1750_ADDR_LO, I2C_NUM_0, I2C_SDA, I2C_SCL);
     if (ret == ESP_OK) {
@@ -78,14 +80,15 @@ void app_gardener_report(void)
 
         bh1750_free:
         bh1750_free_desc(&dev);
-
-        vTaskDelay(30 / portTICK_PERIOD_MS);
     } else {
         ESP_LOGE(TAG, "bh1750_init_desc failed");
     }
 
     ESP_LOGI(TAG, "light: %d", reportData.light);
+#endif
 
+
+#if CONFIG_GARDENER_TEMPERATURE_ENABLED
     // Read temps and humidity
     aht_t aht_dev;
 
@@ -101,14 +104,14 @@ void app_gardener_report(void)
 
         aht_free:
         aht_free_desc(&aht_dev);
-
-        vTaskDelay(10 / portTICK_PERIOD_MS);
     } else {
         ESP_LOGE(TAG, "aht_init_desc failed");
     }
 
     ESP_LOGI(TAG, "temperature: %.2f, humidity: %.2f", reportData.temperature, reportData.humidity);
+#endif
 
+#if CONFIG_GARDENER_EARTHHUMI_ENABLED
     // read earth humidity sensor
 
     adc_config_t adc_config = {
@@ -136,6 +139,9 @@ void app_gardener_report(void)
     }
 
     ESP_LOGI(TAG, "earthHumidity: %d", reportData.earthHumidity);
+#endif
+
+    gpio_set_level(GPIO_NUM_14, 0);
 
     ESP_ERROR_CHECK_WITHOUT_ABORT(espnow_send_data(&reportData, sizeof(reportData)));
 

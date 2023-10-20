@@ -76,7 +76,7 @@ static void espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status
 }
 
 /* Prepare ESPNOW data to be sent. */
-static esp_err_t espnow_sign_userdata(espnow_send_param_t *send_param) {
+static void espnow_sign_userdata(espnow_send_param_t *send_param) {
     espnow_userdata_t *buf = (espnow_userdata_t *) send_param->buffer;
 
     assert(send_param->len >= sizeof(espnow_userdata_t));
@@ -85,8 +85,6 @@ static esp_err_t espnow_sign_userdata(espnow_send_param_t *send_param) {
     buf->crc = 0;
     buf->magic = esp_random();
     buf->crc = crc16_le(UINT16_MAX, (uint8_t const *) buf, send_param->len);
-
-    return ESP_OK;
 }
 
 static void espnow_task(void *pvParameter) {
@@ -101,8 +99,8 @@ static void espnow_task(void *pvParameter) {
 
                 ESP_LOGI(TAG, "Send data to "MACSTR", status1: %d", MAC2STR(send_cb->mac_addr), send_cb->status);
 
-                // go deep sleep 2 minutes
-                uint32_t sleep_time_sec = 5 * 60;
+                // go deep sleep
+                uint32_t sleep_time_sec = CONFIG_GARDENER_SLEEP_DURATION;
                 ESP_LOGI(TAG, "esp_deep_sleep %ds", sleep_time_sec);
                 esp_deep_sleep(sleep_time_sec * 1000000UL);
 
@@ -182,7 +180,7 @@ esp_err_t espnow_send_data(void *data, size_t data_len) {
 
     memcpy(buf->payload, data, data_len);
 
-    ESP_ERROR_CHECK(espnow_sign_userdata(send_param));
+    espnow_sign_userdata(send_param);
 
     esp_err_t ret = esp_now_send(send_param->dest_mac, send_param->buffer, send_param->len);
 
